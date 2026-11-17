@@ -235,6 +235,26 @@ def test_shutdown_signal():
     manager.shutdown.assert_called_once_with()
 
 
+@pytest.mark.parametrize("shutdown_message", (None, "__TERMINATE__"))
+def test_wait_for_ack_preserves_shutdown_message(shutdown_message):
+    publisher = Mock()
+    subscriber = Mock()
+    subscriber.poll.return_value = True
+    subscriber.recv.side_effect = [
+        shutdown_message,
+        AssertionError("shutdown was retried"),
+    ]
+    manager = WorkerManager(
+        1, fake_serve, {}, Mock(), (publisher, subscriber), {}
+    )
+    manager._all_workers_ack = Mock(return_value=False)
+
+    manager.wait_for_ack()
+
+    publisher.send.assert_called_once_with(shutdown_message)
+    subscriber.recv.assert_called_once_with()
+
+
 def test_shutdown_servers(caplog):
     p1 = Mock()
     p1.pid = 1234

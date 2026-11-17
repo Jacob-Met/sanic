@@ -322,6 +322,9 @@ class WorkerManager:
         while not self._all_workers_ack():
             if self.monitor_subscriber.poll(0.1):
                 monitor_msg = self.monitor_subscriber.recv()
+                if monitor_msg in (None, "__TERMINATE__"):
+                    self.monitor_publisher.send(monitor_msg)
+                    return
                 if monitor_msg != "__TERMINATE_EARLY__":
                     self.monitor_publisher.send(monitor_msg)
                     continue
