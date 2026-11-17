@@ -12,6 +12,7 @@ from multiprocessing.context import BaseContext
 from random import choice
 from signal import SIGINT, SIGTERM, Signals
 from signal import signal as signal_func
+from time import sleep
 from typing import Any, Callable
 
 from sanic.compat import OS_IS_WINDOWS
@@ -234,9 +235,14 @@ class WorkerManager:
                 process.terminate()
 
     def cleanup(self):
-        """Cleanup the worker processes."""
-        for process in self.processes:
-            process.exit()
+        """Give all workers one shared grace period, then reap survivors."""
+        processes = list(self.processes)
+        limit = 100
+        while limit > 0 and any(process.is_alive() for process in processes):
+            sleep(0.1)
+            limit -= 1
+        for process in processes:
+            process.exit(wait=False)
 
     def restart(
         self,

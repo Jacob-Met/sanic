@@ -85,11 +85,24 @@ class WorkerProcess:
         self.set_state(ProcessState.JOINED)
         self._current_process.join()
 
-    def exit(self):
-        limit = 100
-        while self.is_alive() and limit > 0:
-            sleep(0.1)
-            limit -= 1
+    def exit(self, wait=True):
+        if wait:
+            limit = 100
+            while self.is_alive() and limit > 0:
+                sleep(0.1)
+                limit -= 1
+
+        if self.is_alive():
+            logger.warning(
+                "Worker %s [%s] did not stop during cleanup; killing it",
+                self.name,
+                self.pid,
+            )
+            try:
+                self._current_process.kill()
+            except ProcessLookupError:
+                pass
+            self._current_process.join(timeout=1)
 
         if not self.is_alive():
             try:
